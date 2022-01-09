@@ -2,7 +2,7 @@ import torch
 from torch import nn
 import torch.nn.functional as F
 import math
-from positional_encoding import *
+from positional_encoding import PositionalEncoding
 from icecream import ic
 
 
@@ -188,87 +188,46 @@ class PerceiverEncoder(nn.Module):
     """Perceiver encoder module. Consists of two components: cross-attention
     module that maps an input tensor and a trainable latent tensor to a latent
     tensor and a stacked Transformer blocks with shared weights.
+    Attributes
+    ----------
+    structure_output : bool
+        if true then we do the positional encoding
+    num_blocks : int
+        le nombre de block pour le processing,
+    times_per_block: int
+        dans chaque bloque de processing cela définit lenombre de multiheadattention qu'on va faire
     """
     # TODO: Position encoding + Cross-attention
-    def __init__(self,qlatent_dim,
-                 qout_dim,
-                 out_dim,
+    def __init__(self,
+                 in_dim,
+                 qlatent_dim,
+                 size_latents,
                  qk_dim,
                  v_dim,
                  num_heads,
                  dim_feedforward,
-                 dropout_prob,
-                 num_latents:int,
-                 l_dim:int,
                  structure_output:bool,
-                 d_model : int,
-                 num_blocks : int,
-                 times_per_block: int,
-                 dropout :float = 0.5) -> None:
-        """args: 
-        structure_output : if true then we do the positional encoding,
-        num_blocks : le nombre de block pour le processing,
-        times_per_block : dans chaque bloque de processing cela définit lenombre de multiheadattention qu'on va faire,
-    
-        ajouter le reste... 
-         """
-
+                 dropout_prob :float = 0.5) -> None:
         super(PerceiverEncoder,self).__init__()
-        self.latents = nn.Parameter(torch.randn(num_latents,qlatent_dim))
         self.structure_output = structure_output
-        self.position_encoder = PositionalEncoding(d_model, dropout)
-        self.cross_attention = MultiheadAttention(in_dim=qlatent_dim,
-                                                  qlatent_dim=qout_dim,
-                                                  qk_dim=qk_dim, 
-                                                  v_dim=v_dim, 
-                                                  out_dim=out_dim)
-        self.attention  = MultiheadAttention
-        self.num_blocks = num_blocks
-        self.times_per_block = times_per_block
-        self.linear_net = nn.Sequential(
-            nn.Linear(out_dim, dim_feedforward),
-            nn.Dropout(dropout_prob),
-            nn.ReLU(inplace=True),
-            nn.Linear(dim_feedforward, out_dim)
-        )
-        
-        
-        self.self_attention_process = nn.ModuleList([
-            MultiheadAttention(in_dim=out_dim,
-            qlatent_dim=qout_dim,
-            qk_dim=qk_dim,
-            v_dim=v_dim,
-            out_dim=out_dim) for _ in range(self.times_per_block)])
-           
+        self.position_encoder = PositionalEncoding(in_dim, dropout_prob)
+        self.cross_attention = CrossAttentionBlock(in_dim=in_dim,
+                                                   qlatent_dim=qlatent_dim,
+                                                   qk_dim=qk_dim,
+                                                   v_dim=v_dim,
+                                                   num_heads=num_heads,
+                                                   dim_feedforward=dim_feedforward,
+                                                   dropout_prob=dropout_prob)
 
-    def forward(self,x):
+    def forward(self,x, q):
         ## on fait le positional encoding que si les outputs ont une structure spatiale ou séquentielle. 
-        b_size = x.shape[0]
         if self.structure_output :
-            ic(x.shape)
             x = self.position_encoder(x)
-            ic(x.shape)
         
         #cross attention:
-        latents = self.cross_attention(x=x,q=self.latents.expand(b_size))
+        latents = self.cross_attention(x=x,q=q)
         
-        #process L times (we process thanks to a transformer so just Multi head attentin layer and after a linear layer): 
-        for _ in range(self.num_blocks):
-            for layer in self.self_attention_process:
-                latents=layer(latents)
-                latents = self.linear_net(latents)
         return latents
-
-
-
-
-
-
-
-
-
-
-
 
 
 class PerceiverDecoder(nn.Module):
