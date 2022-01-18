@@ -15,7 +15,7 @@ def scaled_dot_product(q, k, v, mask=None):
             values: output of the attention layer.
             attention: attention weights
     """
-    q, k, v = (l.transpose(0, 2, 1, 3) for l in (q, k , v))
+    q, k, v = (l.permute(0, 2, 1, 3) for l in (q, k , v)) # transpose head et q_length #utile car 4 dims. 
     qk_dim_head = q.size()[-1]
     attn_logits = torch.matmul(q, k.transpose(-2, -1)) # (batch_size, heads, q_length, kv_length)
     attn_logits = attn_logits / math.sqrt(qk_dim_head)
@@ -23,7 +23,7 @@ def scaled_dot_product(q, k, v, mask=None):
         attn_logits = attn_logits.masked_fill(mask == 0, -9e15)
     attention = F.softmax(attn_logits, dim=-1)
     values = torch.matmul(attention, v) # (batch_size, heads, q_length, v_dim)
-    values = values.permute(0, 2, 1, 3)
+    values = values.permute(0, 2, 1, 3) #(batch_size,q_length, heads,v_dim)
     return values, attention
 
 
@@ -71,10 +71,10 @@ class MultiheadAttention(nn.Module):
             raise ValueError(f'"Q/K Embedding dimension ({self._qk_dim}) \
                 must be 0 modulo number of heads ({self._num_heads}).')
 
-        self.q_proj = nn.Linear(self._qlatent_dim, out_dim=self._qk_dim)
-        self.k_proj = nn.Linear(self._in_dim, out_dim=self._qk_dim)
+        self.q_proj = nn.Linear(self._qlatent_dim, self._qk_dim)
+        self.k_proj = nn.Linear(self._in_dim, self._qk_dim)
  
-        self.v_proj = nn.Linear(self._in_dim, out_dim=self._v_dim)
+        self.v_proj = nn.Linear(self._in_dim, self._v_dim)
         self.out_proj = nn.Linear(self._v_dim, self._out_dim)
 
         self._qk_dim_head = self._qk_dim // self._num_heads
@@ -91,21 +91,24 @@ class MultiheadAttention(nn.Module):
     def forward(self, input_kv, input_q, mask=None):
         batch_size, kv_length, _ = input_kv.size()
         _, q_length, _ = input_q.size()
-        k = self.k_proj(input_kv)
-        v = self.v_proj(input_kv)
-        q = self.q_proj(input_q)
-
-        q = q.reshape(batch_size, q_length, self._num_heads, self._qk_dim_head)
-        k = k.reshape(batch_size, kv_length, self._num_heads, self._qk_dim_head)
+        k = self.k_proj(input_kv) #k c'est la key qui prend l'input
+        v = self.v_proj(input_kv)  # value qui prend l'input
+        q = self.q_proj(input_q) # q qui prend la latent array
+        
+        # On reshape pour avoir le nombre de heads. 
+        q = q.reshape(batch_size, q_length, self._num_heads, self._qk_dim_head)  #n   : q length
+        k = k.reshape(batch_size, kv_length, self._num_heads, self._qk_dim_head) #m : kv length
         v = v.reshape(batch_size, kv_length, self._num_heads, self._v_dim_head)
 
         values, attention = scaled_dot_product(q, k, v, mask=mask)
+        ic(values.shape)
+        ic(attention.shape)
         values = values.reshape(batch_size, q_length, self._v_dim)
         o = self.out_proj(values)
 
         return o
 
-class LatentTransformerBlock(nn.Module):
+class LatentTransformerBlock(nn.Module): #violet dans le schéma. 
     """
     Implementation of perceiverIO LatentTransformer block inspired from typical
     Transformer encoder block by Vaswani et al.
@@ -119,6 +122,7 @@ class LatentTransformerBlock(nn.Module):
                  dropout_prob) -> None:
         super(LatentTransformerBlock, self).__init__()
         
+        #q_k dim c'est la projection, les deux entrées c'est in_dim et q_latent_dim. 
         self.self_attention = MultiheadAttention(in_dim=in_dim,
                                             q_latent_dim=in_dim,
                                             qk_dim=qk_dim,
@@ -138,7 +142,7 @@ class LatentTransformerBlock(nn.Module):
     def forward(self, x, mask=None):
         # Attention part
         x_norm = self.norm1(x)
-        attn_out = self.self_attention(x_norm, x_norm, mask=mask)
+        attn_out = self.self_attention(x_norm, x_norm, mask=mask) #on fait un self attention normal. 
         x += self.dropout(attn_out)
         x = self.norm2(x)
 
@@ -147,6 +151,7 @@ class LatentTransformerBlock(nn.Module):
         x += self.dropout(linear_out)
 
         return x
+
 
 class CrossAttentionBlock(nn.Module):
     def __init__(self,
@@ -158,8 +163,7 @@ class CrossAttentionBlock(nn.Module):
                  dim_feedforward,
                  dropout_prob) -> None:
         super(CrossAttentionBlock).__init__()
-        self.cross_attention = MultiheadAttention(in_dim, qlatent_dim, qk_dim, v_dim, qlatent_dim, num_heads)
-
+        self.cross_attention = MultiheadAttention(in_dim=in_dim,qlatent_dim = qlatent_dim,qk_dim=qk_dim,v_dim=v_dim,out_dim=qlatent_dim,num_heads=num_heads)
         self.normq = nn.LayerNorm(qlatent_dim)
         self.normx = nn.LayerNorm(in_dim)
         self.norm2 = nn.LayerNorm(qlatent_dim)
@@ -201,7 +205,6 @@ class PerceiverEncoder(nn.Module):
     def __init__(self,
                  in_dim,
                  qlatent_dim,
-                 size_latents,
                  qk_dim,
                  v_dim,
                  num_heads,
@@ -210,7 +213,8 @@ class PerceiverEncoder(nn.Module):
                  dropout_prob :float = 0.5) -> None:
         super(PerceiverEncoder,self).__init__()
         self.structure_output = structure_output
-        self.position_encoder = PositionalEncoding(in_dim, dropout_prob)
+        if self.structure_output:
+            self.position_encoder = PositionalEncoding(in_dim, dropout_prob)
         self.cross_attention = CrossAttentionBlock(in_dim=in_dim,
                                                    qlatent_dim=qlatent_dim,
                                                    qk_dim=qk_dim,

@@ -1,3 +1,0 @@
-"""
-PerceiverIO test file
-"""

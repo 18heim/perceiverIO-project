@@ -1,3 +1,0 @@
-"""
-positional encoding test file
-"""

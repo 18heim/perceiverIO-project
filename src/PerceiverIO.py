@@ -32,7 +32,7 @@ class PerceiverIO(nn.Module):
         self.decoder = PerceiverDecoder(qlatent_dim, qout_dim, out_dim, qk_dim, v_dim, num_cross_heads, dim_feedforward, dropout_prob)
     
     def forward(self, x):
-        #TODO: should we set nn.Parameter latent in here or in encoder ?
+        #TODO: should we set nn.Parameter latent in here or in encoder ? 
         # Same for output_q 
         # latent_q = self.init_latent_q() strategy for init ?
         b_size = x.shape[0]
