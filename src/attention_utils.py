@@ -15,7 +15,7 @@ def scaled_dot_product(q, k, v, mask=None):
             values: output of the attention layer.
             attention: attention weights
     """
-    q, k, v = (l.permute(0, 2, 1, 3) for l in (q, k , v)) # transpose head et q_length #utile car 4 dims. 
+    q, k, v = (l.permute(0, 2, 1, 3) for l in (q, k , v))
     qk_dim_head = q.size()[-1]
     attn_logits = torch.matmul(q, k.transpose(-2, -1)) # (batch_size, heads, q_length, kv_length)
     attn_logits = attn_logits / math.sqrt(qk_dim_head)
