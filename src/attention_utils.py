@@ -11,9 +11,11 @@ def scaled_dot_product(q, k, v, mask=None):
     """
         Parameters:
             mask: represents the optional masking of specific entries in the attention matrix
+            q,k,v : query, key, value
         Returns:
             values: output of the attention layer.
             attention: attention weights
+        
     """
     q, k, v = (l.permute(0, 2, 1, 3) for l in (q, k , v))
     qk_dim_head = q.size()[-1]
