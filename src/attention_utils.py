@@ -110,9 +110,13 @@ class LatentTransformerBlock(nn.Module): #violet dans le schéma. Merci Mathieu 
     """
     Implementation of perceiverIO LatentTransformer block inspired from typical
     Transformer encoder block by Vaswani et al.
+    
+    attributes : 
+    in_dim = qlatent_dim 
     """
+
     def __init__(self,
-                 in_dim,
+                 qlatent_dim,
                  qk_dim,
                  v_dim,
                  num_heads,
@@ -121,20 +125,20 @@ class LatentTransformerBlock(nn.Module): #violet dans le schéma. Merci Mathieu 
         super(LatentTransformerBlock, self).__init__()
         
         #q_k dim c'est la projection, les deux entrées c'est in_dim et q_latent_dim. 
-        self.self_attention = MultiheadAttention(in_dim=in_dim,
-                                            q_latent_dim=in_dim,
+        self.self_attention = MultiheadAttention(in_dim=qlatent_dim,
+                                            qlatent_dim=qlatent_dim,
                                             qk_dim=qk_dim,
                                             v_dim=v_dim, 
-                                            out_dim=in_dim, 
+                                            out_dim=qlatent_dim, 
                                             num_heads=num_heads)
-        self.norm1 = nn.LayerNorm(in_dim)
-        self.norm2 = nn.LayerNorm(in_dim)
+        self.norm1 = nn.LayerNorm(qlatent_dim)
+        self.norm2 = nn.LayerNorm(qlatent_dim)
         self.dropout = nn.Dropout(dropout_prob)
         self.linear_net = nn.Sequential(
-            nn.Linear(in_dim, dim_feedforward),
+            nn.Linear(qlatent_dim, dim_feedforward),
             nn.Dropout(dropout_prob),
             nn.ReLU(inplace=True),
-            nn.Linear(dim_feedforward, in_dim)
+            nn.Linear(dim_feedforward, qlatent_dim)
         )
 
     def forward(self, x, mask=None):
@@ -147,7 +151,7 @@ class LatentTransformerBlock(nn.Module): #violet dans le schéma. Merci Mathieu 
         # MLP part
         linear_out = self.linear_net(x)
         x += self.dropout(linear_out)
-
+        ic(x.shape)
         return x
 
 
@@ -162,6 +166,7 @@ class CrossAttentionBlock(nn.Module):
                  dropout_prob) -> None:
         super(CrossAttentionBlock, self).__init__()
         self.cross_attention = MultiheadAttention(in_dim=in_dim,qlatent_dim = qlatent_dim,qk_dim=qk_dim,v_dim=v_dim,out_dim=qlatent_dim,num_heads=num_heads)
+
         self.normq = nn.LayerNorm(qlatent_dim)
         self.normx = nn.LayerNorm(in_dim)
         self.norm2 = nn.LayerNorm(qlatent_dim)
@@ -183,7 +188,7 @@ class CrossAttentionBlock(nn.Module):
         # MLP part
         linear_out = self.linear_net(q)
         q += self.dropout(linear_out)
-
+    
         return q
 
 class PerceiverEncoder(nn.Module):
@@ -228,11 +233,15 @@ class PerceiverEncoder(nn.Module):
         
         #cross attention:
         latents = self.cross_attention(x=x,q=q)
-        
+
         return latents
 
 
 class PerceiverDecoder(nn.Module):
+    """
+    attributes: 
+
+    """
     def __init__(self,
                  qlatent_dim,
                  qout_dim,
@@ -244,15 +253,17 @@ class PerceiverDecoder(nn.Module):
                  dropout_prob
                  ) -> None:
         super(PerceiverDecoder, self).__init__()
+
         self.cross_attention = MultiheadAttention(in_dim=qlatent_dim,
+                                                num_heads=num_heads,
                                                   qlatent_dim=qout_dim,
                                                   qk_dim=qk_dim, 
                                                   v_dim=v_dim, 
                                                   out_dim=out_dim)
 
-        self.normq_out = nn.LayerNorm(qout_dim)
         self.normq_latent = nn.LayerNorm(qlatent_dim)
-        self.norm2 = nn.LayerNorm(qout_dim)
+        self.normq_out = nn.LayerNorm(qout_dim)
+        self.norm2 = nn.LayerNorm(out_dim)
         self.dropout = nn.Dropout(dropout_prob)
         self.linear_net = nn.Sequential(
             nn.Linear(out_dim, dim_feedforward),
@@ -264,7 +275,7 @@ class PerceiverDecoder(nn.Module):
 
     def forward(self, q, q_out, mask=None):
         # Attention part
-        qlatent_norm, qout_norm = self.normq_out(q), self.normq_latent(q_out)
+        qlatent_norm, qout_norm = self.normq_latent(q), self.normq_out(q_out)
         attn_out = self.cross_attention(qlatent_norm, qout_norm, mask=mask)
         q_out = self.norm2(attn_out)
 
