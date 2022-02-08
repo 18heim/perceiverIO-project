@@ -101,14 +101,12 @@ class MultiheadAttention(nn.Module):
         v = v.reshape(batch_size, kv_length, self._num_heads, self._v_dim_head)
 
         values, attention = scaled_dot_product(q, k, v, mask=mask)
-        ic(values.shape)
-        ic(attention.shape)
         values = values.reshape(batch_size, q_length, self._v_dim)
         o = self.out_proj(values)
 
         return o
 
-class LatentTransformerBlock(nn.Module): #violet dans le schéma. 
+class LatentTransformerBlock(nn.Module): #violet dans le schéma. Merci Mathieu pour cette indication !
     """
     Implementation of perceiverIO LatentTransformer block inspired from typical
     Transformer encoder block by Vaswani et al.
@@ -162,7 +160,7 @@ class CrossAttentionBlock(nn.Module):
                  num_heads,
                  dim_feedforward,
                  dropout_prob) -> None:
-        super(CrossAttentionBlock).__init__()
+        super(CrossAttentionBlock, self).__init__()
         self.cross_attention = MultiheadAttention(in_dim=in_dim,qlatent_dim = qlatent_dim,qk_dim=qk_dim,v_dim=v_dim,out_dim=qlatent_dim,num_heads=num_heads)
         self.normq = nn.LayerNorm(qlatent_dim)
         self.normx = nn.LayerNorm(in_dim)
