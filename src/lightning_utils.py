@@ -8,13 +8,12 @@ import pytorch_lightning as pl
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from datamaestro import prepare_dataset
 from pytorch_lightning.loggers import TensorBoardLogger
 from torch import nn
 from torch.distributions import Categorical
 from torch.functional import norm
 from torch.utils.data import DataLoader, TensorDataset, random_split
-
+from icecream import ic
 
 def optim_factory(model: nn.Module, optimizer_params: Dict[str, Any]):
     """Construct Optimizer object from input serialized parameters dict."""
@@ -33,8 +32,7 @@ class LightningNetwork(pl.LightningModule):
                  loss):
         super().__init__()
         self.model = network
-        self.optimizer_params,
-        self.loss = loss,
+        self.loss = loss
         self.name = name
         self.optimizer_params = optimizer_params
 
@@ -49,7 +47,9 @@ class LightningNetwork(pl.LightningModule):
 
     def training_step(self,batch,batch_idx):
         x, y = batch
-        yhat = self(x)
+        batch_size, channels, height, width = x.size()
+        x = x.view(batch_size, -1, channels)
+        yhat = self(x).view(batch_size,-1)
         loss = self.loss(yhat,y)
 
         acc = (yhat.argmax(1)==y).sum()

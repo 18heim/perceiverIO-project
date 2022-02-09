@@ -41,7 +41,6 @@ class PerceiverIO(nn.Module):
         b_size = x.shape[0]
         latent_q = self.latent_q.unsqueeze(dim=0).repeat(b_size,1,1)
         output_q = self.output_q.unsqueeze(dim=0).repeat(b_size,1,1)
-        ic(latent_q.shape)
         # Encoder block
         latent_q = self.encoder_block(x, latent_q)
         # Latent blocks

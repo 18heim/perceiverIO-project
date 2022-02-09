@@ -30,9 +30,9 @@ class ImagenetDataModule(pl.LightningDataModule):
         self.image_size = image_size
         self.num_workers = num_workers
         self.batch_size = batch_size
-        self.pin_memory = True if (torch.cuda.is_available() and self.pin_memory is None) else False
+        self.pin_memory = True if (torch.cuda.is_available() and pin_memory is None) else False
         self.setup_val = setup_val
-        torch.random.seed(5)
+        #torch.random.seed(5)
 
     def setup_val(self):
         val_img_dir = self.data_dir / 'val' / 'images'
@@ -56,7 +56,7 @@ class ImagenetDataModule(pl.LightningDataModule):
                 os.rename(os.path.join(val_img_dir, img), os.path.join(newpath, img))
 
     def train_dataloader(self):
-        transforms = self.train_transform() if self.train_transforms is None else self.train_transforms
+        transforms = self.training_transform() # if self.train_transforms is None else self.train_transforms
         train_data = datasets.ImageFolder(os.path.join(self.data_dir, 'train') , transform=transforms)
         train_loader = DataLoader(train_data,
                                   batch_size=self.batch_size,
@@ -69,7 +69,7 @@ class ImagenetDataModule(pl.LightningDataModule):
     def val_dataloader(self):
         if self.setup_val:
             self.setup_val()
-        transforms = self.val_transform() if self.val_transforms is None else self.val_transforms
+        transforms = self.validation_transform() #if self.val_transforms is None else self.val_transforms
         val_data = datasets.ImageFolder(os.path.join(self.data_dir, 'val', 'images') , transform=transforms)
         val_loader = DataLoader(val_data,
                                 batch_size=self.batch_size,
@@ -79,7 +79,7 @@ class ImagenetDataModule(pl.LightningDataModule):
                                 )
         return val_loader
 
-    def train_transform(self) -> Callable:
+    def training_transform(self) -> Callable:
         """The standard imagenet transforms.
         .. code-block:: python
             transforms.Compose([
@@ -104,7 +104,7 @@ class ImagenetDataModule(pl.LightningDataModule):
 
         return preprocessing
 
-    def val_transform(self) -> Callable:
+    def validation_transform(self) -> Callable:
         """The standard imagenet transforms for validation.
         .. code-block:: python
             transforms.Compose([
