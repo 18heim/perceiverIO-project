@@ -145,13 +145,12 @@ class LatentTransformerBlock(nn.Module): #violet dans le schéma. Merci Mathieu 
         # Attention part
         x_norm = self.norm1(x)
         attn_out = self.self_attention(x_norm, x_norm, mask=mask) #on fait un self attention normal. 
-        x += self.dropout(attn_out)
+        x = x + self.dropout(attn_out)
         x = self.norm2(x)
 
         # MLP part
         linear_out = self.linear_net(x)
-        x += self.dropout(linear_out)
-        ic(x.shape)
+        x = x + self.dropout(linear_out)
         return x
 
 
@@ -182,12 +181,12 @@ class CrossAttentionBlock(nn.Module):
         # Attention part
         x_norm, q_norm = self.normx(x), self.normq(q)
         attn_out = self.cross_attention(x_norm, q_norm, mask=mask)
-        q += self.dropout(attn_out)
+        q = q + self.dropout(attn_out)
         q = self.norm2(q)
 
         # MLP part
         linear_out = self.linear_net(q)
-        q += self.dropout(linear_out)
+        q = q + self.dropout(linear_out)
     
         return q
 
@@ -281,6 +280,6 @@ class PerceiverDecoder(nn.Module):
 
         # MLP part
         linear_out = self.linear_net(attn_out)
-        attn_out += self.dropout(linear_out)
+        attn_out = attn_out + self.dropout(linear_out)
 
         return attn_out

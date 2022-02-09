@@ -2,7 +2,7 @@
 attention_utils test file
 """
 
-
+from icecream import ic
 import torch
 import sys 
 sys.path.insert(1,'../src')
@@ -60,48 +60,68 @@ decoder = PerceiverDecoder(
                  dropout_prob=0.5)
         
 
-
-
-def test_multi_head(x,latent): 
+def test_multi_head(x, latent): 
     return multihead(x,latent)
 
-def test_encoder(x,latent): 
+def test_backward_multi_head(x, latent):
+     with torch.autograd.set_detect_anomaly(True):
+        y = multihead(x, latent)
+        y = y.mean()
+        y.backward()
+
+def test_encoder(x, latent): 
     return encoder(x,latent)
 
-def test_latentencoder(x):
+def test_backward_encoder(x, latent):
+    with torch.autograd.set_detect_anomaly(True):
+        y = encoder(x, latent)
+        y = y.mean()
+        y.backward()
+
+def test_self_attention(x):
     return selfattention(x)
 
-def test_latentdecoder(x,latent):
-    return decoder(x,latent)
+def test_backward_self_attention(x):
+    with torch.autograd.set_detect_anomaly(True):
+        y = selfattention(x)
+        y = y.mean()
+        y.backward()
 
+def test_decoder(x, latent):
+    return decoder(x, latent)
+
+def test_backward_decoder(x, latent):
+    with torch.autograd.set_detect_anomaly(True):
+        y = decoder(x, latent)
+        y = y.mean()
+        y.backward()
 
 try : 
     o = test_multi_head(x,qlatent)
 except ValueError:
     raise ValueError("ValueError multi head error")
-if o.shape != [batch_size,q_length,in_dim]: 
+if o.shape != (batch_size,q_length,in_dim): 
     raise ValueError("output multihead shape wrong")
 
 
-o = test_encoder(x,qlatent)
-if o.shape != (batch_size,q_length,qlatent_dim): 
+o = test_encoder(x, qlatent)
+if o.shape != (batch_size, q_length,qlatent_dim): 
     raise ValueError("output encoder shape wrong")
 
-
 try : 
-    o = test_latentencoder(qlatent)
+    o = test_self_attention(qlatent)
 except ValueError:
     raise ValueError("ValueError latent error")
 
 
 try : 
-    o = test_latentdecoder(qlatent,olatent)
+    o = test_decoder(qlatent,olatent)
 except ValueError:
     raise ValueError("ValueError latent error")
 
-  
-  
-
-# if o.shape != batch_size,q_length, heads,v_dim
+test_backward_decoder(qlatent, olatent)
+test_backward_encoder(x, qlatent)
+test_backward_multi_head(x, qlatent)
+test_backward_self_attention(qlatent)
 
 
