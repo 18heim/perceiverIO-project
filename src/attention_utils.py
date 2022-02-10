@@ -218,7 +218,7 @@ class PerceiverEncoder(nn.Module):
         super(PerceiverEncoder,self).__init__()
         self.structure_output = structure_output
         if self.structure_output:
-            self.position_encoder = PositionalEncoding(in_dim, dropout_prob)
+            self.position_encoder = PositionalEncoding(in_dim)
         self.cross_attention = CrossAttentionBlock(in_dim=in_dim,
                                                    qlatent_dim=qlatent_dim,
                                                    qk_dim=qk_dim,

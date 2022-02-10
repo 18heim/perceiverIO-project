@@ -73,7 +73,7 @@ class ImagenetDataModule(pl.LightningDataModule):
         val_data = datasets.ImageFolder(os.path.join(self.data_dir, 'val', 'images') , transform=transforms)
         val_loader = DataLoader(val_data,
                                 batch_size=self.batch_size,
-                                shuffle=True,
+                                shuffle=False,
                                 num_workers=self.num_workers,
                                 pin_memory = self.pin_memory,
                                 )

@@ -24,11 +24,11 @@ if __name__=="__main__":
                           out_dim = num_class,
                           dim_feedforward=32,
                           dropout_prob=0.2,
-                          structure_output=False
+                          structure_output=True
                           )
 
     params = {'type': 'Adam',
-                 'lr': 0.0001}
+                 'lr': 0.001}
     criterion = nn.CrossEntropyLoss()
     train_loader = data.train_dataloader()
     val_loader = data.val_dataloader()
@@ -38,7 +38,7 @@ if __name__=="__main__":
     trainer = pl.Trainer(gpus=1 if torch.cuda.is_available() else None,
                         #logger=logger,
                         #default_root_dir=LOG_PATH,
-                        max_epochs=2)
+                        max_epochs=120)
                         #callbacks=[checkpoint_callback])
     
     #hyperparameters = conf
