@@ -24,14 +24,14 @@ class ImagenetDataModule(pl.LightningDataModule):
                  num_workers: int = 2,
                  batch_size: int = 32,
                  pin_memory: Optional[bool] = None,
-                 setup_val: bool = False):
+                 setup_validation: bool = False):
         super().__init__()
         self.data_dir = data_dir
         self.image_size = image_size
         self.num_workers = num_workers
         self.batch_size = batch_size
         self.pin_memory = True if (torch.cuda.is_available() and pin_memory is None) else False
-        self.setup_val = setup_val
+        self.setup_validation = setup_validation
         #torch.random.seed(5)
 
     def setup_val(self):
@@ -67,7 +67,7 @@ class ImagenetDataModule(pl.LightningDataModule):
         return train_loader
 
     def val_dataloader(self):
-        if self.setup_val:
+        if self.setup_validation:
             self.setup_val()
         transforms = self.validation_transform() #if self.val_transforms is None else self.val_transforms
         val_data = datasets.ImageFolder(os.path.join(self.data_dir, 'val', 'images') , transform=transforms)

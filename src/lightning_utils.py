@@ -62,7 +62,9 @@ class LightningNetwork(pl.LightningModule):
         """ une étape de validation
         doit retourner un dictionnaire"""
         x, y = batch
-        yhat = self(x)
+        batch_size, channels, height, width = x.size()
+        x = x.view(batch_size, -1, channels)
+        yhat = self(x).view(batch_size,-1)
         loss = self.loss(yhat,y)
         acc = (yhat.argmax(1)==y).sum()
         logs = {"loss":loss,"accuracy":acc,"nb":len(x)}

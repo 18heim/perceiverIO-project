@@ -16,7 +16,7 @@ break
 elif [[ $k = a ]] ; then
 printf "\nDownloading tiny-imagenet ...\n"
 wget http://cs231n.stanford.edu/tiny-imagenet-200.zip -P /content/
-unzip /content/tiny-imagenet-200.zip
+unzip /content/tiny-imagenet-200.zip -d /content/
 break
 elif [[ $k = b ]] ; then
 printf "\nDownloading sintel\n"

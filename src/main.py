@@ -10,7 +10,7 @@ import pytorch_lightning as pl
 if __name__=="__main__":
     data_dir = Path('/content/tiny-imagenet-200')
     num_class = 100000
-    data = ImagenetDataModule(data_dir, image_size=64, num_workers=2, batch_size=32, pin_memory=True, setup_val=True)
+    data = ImagenetDataModule(data_dir, image_size=64, num_workers=2, batch_size=32, pin_memory=True, setup_validation=True)
     network = PerceiverIO(num_cross_heads=2,
                           num_latent_heads=4,
                           in_dim=3,
@@ -31,6 +31,7 @@ if __name__=="__main__":
                  'lr': 0.0001}
     criterion = nn.CrossEntropyLoss()
     train_loader = data.train_dataloader()
+    val_loader = data.val_dataloader()
 
     model = LightningNetwork(loss=criterion, optimizer_params=params, name='Test0', network=network)
     #logger = TensorBoardLogger(save_dir=LOG_PATH, name=model.name, version=time.asctime(), default_hp_metric=False)
@@ -43,4 +44,4 @@ if __name__=="__main__":
     #hyperparameters = conf
     #trainer.logger.log_hyperparams(hyperparameters)
 
-    trainer.fit(model, train_loader)
+    trainer.fit(model, train_loader, val_dataloaders=val_loader)
