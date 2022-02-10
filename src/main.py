@@ -11,19 +11,19 @@ if __name__=="__main__":
     data_dir = Path('/content/tiny-imagenet-200')
     num_class = 100000
     data = ImagenetDataModule(data_dir, image_size=64, num_workers=2, batch_size=32, pin_memory=True, setup_validation=True)
-    network = PerceiverIO(num_cross_heads=2,
+    network = PerceiverIO(num_cross_heads=4,
                           num_latent_heads=4,
                           in_dim=3,
-                          qlatent_dim=64,
+                          qlatent_dim=128,
                           q_length = 128,
-                          num_latent_block=10,
+                          num_latent_block=32,
                           qout_dim=32,
                           qout_length=1,
-                          v_dim = 32,
-                          qk_dim = 32,
+                          v_dim = 128,
+                          qk_dim = 128,
                           out_dim = num_class,
-                          dim_feedforward=32,
-                          dropout_prob=0.2,
+                          dim_feedforward=256,
+                          dropout_prob=0.0,
                           structure_output=True
                           )
 
