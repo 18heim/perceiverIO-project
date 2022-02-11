@@ -1,20 +1,11 @@
-import time
-from pathlib import Path
-from typing import Optional, Dict, Any
-import importlib
-
-import numpy as np
+from typing import Any, Dict, Optional, Tuple
 import pytorch_lightning as pl
 import torch
-import torch.nn as nn
-import torch.nn.functional as F
-from pytorch_lightning.loggers import TensorBoardLogger
-from torch import nn
-from torch.distributions import Categorical
-from torch.functional import norm
-from torch.utils.data import DataLoader, TensorDataset, random_split
-from icecream import ic
 import torchmetrics as tm
+from torch import nn
+import importlib
+from torchmetrics import Accuracy
+
 
 def optim_factory(model: nn.Module, optimizer_params: Dict[str, Any]):
     """Construct Optimizer object from input serialized parameters dict."""
@@ -25,7 +16,7 @@ def optim_factory(model: nn.Module, optimizer_params: Dict[str, Any]):
                            **{k: v for k, v in optimizer_params.items() if k != 'type'})
 
 
-class LightningNetwork(pl.LightningModule):
+class LightningClassificationNetwork(pl.LightningModule):
     def __init__(self,
                  name,
                  network: nn.Module,
@@ -36,7 +27,7 @@ class LightningNetwork(pl.LightningModule):
         self.loss = loss
         self.name = name
         self.optimizer_params = optimizer_params
-        self.acc = tm.classification.accuracy.Accuracy()
+        self.accuracy = Accuracy()
 
     def forward(self,x):
         x = self.model(x)
@@ -49,30 +40,25 @@ class LightningNetwork(pl.LightningModule):
 
     def training_step(self,batch,batch_idx):
         x, y = batch
-        batch_size, channels, height, width = x.size()
-        x = x.permute(0,2,3,1)
-        x = x.view(batch_size, -1, channels)
-        yhat = self(x).view(batch_size,-1)
-        loss = self.loss(yhat,y)
-        acc = self.acc(yhat.argmax(-1), y)
-        logs = {"loss":loss,"accuracy":acc,"nb":len(x)}
-        self.log("accuracy",acc, on_step=True, on_epoch=True, prog_bar=True)
-        self.log("training_loss",loss, on_step=False,on_epoch=True)
-        return logs
+        logits = self(x)
+        loss = self.loss(logits, y)
+        preds = logits.argmax(dim=-1)
+        self.accuracy(preds, y)
+        self.log("train_accuracy", self.accuracy, on_step=True, on_epoch=True, prog_bar=True)
+        self.log("training_loss", loss, on_step=False, on_epoch=True)
+        return loss
 
     def validation_step(self,batch,batch_idx):
         """ une étape de validation
         doit retourner un dictionnaire"""
         x, y = batch
-        batch_size, channels, height, width = x.size()
-        x = x.view(batch_size, -1, channels)
-        yhat = self(x).view(batch_size,-1)
-        loss = self.loss(yhat,y)
-        acc = self.acc(yhat.argmax(-1), y)
-        logs = {"loss":loss,"accuracy":acc,"nb":len(x)}
-        self.log("val_accuracy", acc/len(x), on_step=False, on_epoch=True, prog_bar=True)
-        self.log("validation_loss",loss, on_step=False,on_epoch=True)
-        return logs
+        logits = self(x)
+        loss = self.loss(logits, y)
+        preds = logits.argmax(dim=-1)
+        self.accuracy(preds, y)
+        self.log("val_accuracy", self.accuracy, on_step=True, on_epoch=True, prog_bar=True)
+        self.log("val_loss", loss, on_step=False, on_epoch=True)
+        return loss
 
     def test_step(self,batch,batch_idx):
         """ une étape de test """
