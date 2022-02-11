@@ -3,7 +3,7 @@ from pathlib import Path
 from typing import Optional
 
 import pytorch_lightning as pl
-from src.utils import channels_to_last
+from utils import channels_to_last
 from torch.utils.data import DataLoader, random_split
 from torchvision import transforms
 from torchvision.datasets import MNIST

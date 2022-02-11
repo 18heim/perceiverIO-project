@@ -7,7 +7,7 @@ import torch
 import torchvision.datasets as datasets
 import torchvision.transforms as transforms
 from torch.utils.data import DataLoader
-from src.utils import channels_to_last
+from utils import channels_to_last
 
 
 class ImagenetDataModule(pl.LightningDataModule):
