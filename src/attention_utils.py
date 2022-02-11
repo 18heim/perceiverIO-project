@@ -2,8 +2,6 @@ import torch
 from torch import nn
 import torch.nn.functional as F
 import math
-from positional_encoding import PositionalEncoding
-from icecream import ic
 
 def mlp(num_channels: int):
     return nn.Sequential(
@@ -136,15 +134,11 @@ class PerceiverEncoder(nn.Module):
                  num_self_heads,
                  dropout_prob,
                  q_length,
-                 num_latent_blocks: int = 0,
-                 structure_output: bool = True) -> None:
+                 num_latent_blocks: int = 0) -> None:
         super(PerceiverEncoder,self).__init__()
         self.latent_q = nn.Parameter(torch.randn(q_length,qlatent_dim))
         self._init_parameters()
-        self.structure_output = structure_output
         self.num_latent_blocks = num_latent_blocks
-        if self.structure_output:
-            self.position_encoder = PositionalEncoding(in_dim)
         self.encode = LatentTransformerBlock(in_dim,
                                              qlatent_dim,
                                              num_cross_heads,
@@ -163,8 +157,6 @@ class PerceiverEncoder(nn.Module):
 
     def forward(self, x, mask=None):
         ## on fait le positional encoding que si les outputs ont une structure spatiale ou séquentielle. 
-        if self.structure_output :
-            x = self.position_encoder(x)
         b_size = x.shape[0]
         latent_q = self.latent_q.unsqueeze(dim=0).repeat(b_size,1,1)
         q = self.encode(x, latent_q, mask)

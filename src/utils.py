@@ -116,11 +116,13 @@ class ImageInputAdapter(InputAdapter):
         x = rearrange(x, "b ... c -> b (...) c")
         return torch.cat([x, x_enc], dim=-1)
     
+
 class ImageClassificationAdapter(OutputAdapter):
-    def __int__(self, 
+    def __init__(self, 
                 qout_dim,
-                num_class):
-        super.__init__()
+                num_class,
+                num_outputs=1):
+        super().__init__(output_shape=(num_outputs, num_class))
         self.linear_end = nn.Linear(qout_dim, num_class)
 
     def forward(self, x):
