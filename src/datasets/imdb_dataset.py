@@ -12,10 +12,14 @@ from datamaestro import prepare_dataset
 import torch.nn.functional as F
 import torch
 import torch.nn as nn
-from torch.utils.data import Dataset
+from torch.utils.data import Dataset, DataLoader
 from torch.utils.tensorboard import SummaryWriter
+from omegaconf import OmegaConf
+
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 writer = SummaryWriter()
+
+conf = OmegaConf.load('config/config_imdb.yaml')
 
 PAD_ID = 40001
 
@@ -42,13 +46,11 @@ class FolderText(Dataset):
         s = self.files[ix]
         return self.tokenizer(s if isinstance(s, str) else s.read_text()), self.filelabels[ix]
     
-
-
 def collate(batch):
     data = [torch.LongTensor(b[0]) for b in batch]
     lens = [len(b[0]) for b in batch]
     labels = [b[1] for b in batch]
-    return torch.nn.utils.rnn.pad_sequence(data, padding_value = PAD_ID, batch_first=True), torch.LongTensor(lens), torch.LongTensor(labels)
+    return torch.nn.utils.rnn.pad_sequence(data, padding_value = PAD_ID, batch_first=True), torch.LongTensor(labels)
 
 def get_imdb_data(embedding_size=50):
     """Renvoie l'ensemble des donnéees nécessaires pour l'apprentissage

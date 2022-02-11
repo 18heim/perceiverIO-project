@@ -129,3 +129,44 @@ class ImageClassificationAdapter(OutputAdapter):
         x = x.mean(1)
         x = self.linear_end(x)
         return x
+
+class TextInputAdapter(InputAdapter):
+    def __init__(self, vocab_size: int, max_seq_len: int, num_input_channels: int):
+        super().__init__(num_input_channels=num_input_channels)
+
+        self.text_embedding = nn.Embedding(vocab_size, num_input_channels)
+        self.pos_encoding = nn.Parameter(torch.empty(max_seq_len, num_input_channels))
+
+        self.scale = math.sqrt(num_input_channels)
+        self._init_parameters()
+
+    def _init_parameters(self):
+        with torch.no_grad():
+            self.text_embedding.weight.data.uniform_(-0.1, 0.1)
+            self.pos_encoding.uniform_(-0.5, 0.5)
+
+    def forward(self, x):
+        b, l = x.shape  # noqa: E741
+
+        # repeat position encodings along batch dimension
+        p_enc = repeat(self.pos_encoding[:l], "... -> b ...", b=b)
+
+        return self.text_embedding(x) * self.scale + p_enc
+
+
+class ClassificationOutputAdapter(OutputAdapter):
+    def __init__(self, num_classes: int, num_outputs: int = 1, num_output_channels: Optional[int] = None):
+
+        if num_output_channels is None:
+            num_output_channels = num_classes
+
+        super().__init__(output_shape=(num_outputs, num_output_channels))
+        self.linear = nn.Linear(num_output_channels, num_classes)
+
+    def forward(self, x):
+        return self.linear(x).squeeze(dim=1)
+
+
+class TextOutputAdapter(ClassificationOutputAdapter):
+    def __init__(self, vocab_size: int, max_seq_len: int, num_output_channels: Optional[int] = None):
+        super().__init__(num_classes=vocab_size, num_outputs=max_seq_len, num_output_channels=num_output_channels)
