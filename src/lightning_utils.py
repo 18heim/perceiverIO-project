@@ -27,8 +27,9 @@ class LightningClassificationNetwork(pl.LightningModule):
         self.loss = loss
         self.name = name
         self.optimizer_params = optimizer_params
-        self.val_accuracy = Accuracy()
         self.train_accuracy = Accuracy()
+        self.val_accuracy = Accuracy()
+        self.test_accuracy = Accuracy()
 
     def forward(self,x):
         x = self.model(x)
@@ -44,10 +45,11 @@ class LightningClassificationNetwork(pl.LightningModule):
         logits = self(x)
         loss = self.loss(logits, y)
         preds = logits.argmax(dim=-1)
-        self.train_accuracy(preds, y)
-        self.log("train_accuracy", self.train_accuracy, on_epoch=True, prog_bar=True)
-        self.log("training_loss", loss, on_step=False, on_epoch=True)
-        return loss
+        acc = self.train_accuracy(preds, y)
+        self.log("train_accuracy", acc, on_epoch=True, prog_bar=True)
+        self.log("train_loss", loss, on_step=False, on_epoch=True)
+        logs = {"train_loss": loss, "train_accuracy": acc}
+        return logs
 
     def validation_step(self,batch,batch_idx):
         """ une étape de validation
@@ -56,20 +58,38 @@ class LightningClassificationNetwork(pl.LightningModule):
         logits = self(x)
         loss = self.loss(logits, y)
         preds = logits.argmax(dim=-1)
-        self.val_accuracy(preds, y)
-        self.log("val_accuracy", self.val_accuracy, on_epoch=True, prog_bar=True)
+        acc = self.val_accuracy(preds, y)
+        self.log("val_accuracy", acc, on_epoch=True, prog_bar=True)
         self.log("val_loss", loss, on_step=False, on_epoch=True)
-        return loss
+        logs = {"val_loss": loss, "val_accuracy": acc}
+        return logs
 
     def test_step(self,batch,batch_idx):
         """ une étape de test """
         x, y = batch
-        yhat = self(x)
-        loss = self.loss(yhat,y)
-        acc = (yhat.argmax(1)==y).sum()
-        logs = {"loss":loss,"accuracy":acc,"nb":len(x)}
+        logits = self(x)
+        loss = self.loss(logits, y)
+        preds = logits.argmax(dim=-1)
+        # acc = (yhat.argmax(1)==y).sum()
+        acc = self.test_accuracy(preds, y)
+        logs = {"test_loss":loss,"test_accuracy":acc,"nb":len(x)}
         return logs
 
+    def training_epoch_end(self, outputs):
+        total_loss = sum([o['train_loss'] for o in outputs]) / len(outputs)
+        total_accuracy = sum([o['train_accuracy'] for o in outputs]) / len(outputs)
+        self.logger.experiment.add_scalar("Train loss", total_loss.item(), self.current_epoch)
+        self.logger.experiment.add_scalar("Train accuracy", total_accuracy.item(), self.current_epoch)
+
+    def validation_epoch_end(self, outputs):
+        total_loss = sum([o['val_loss'] for o in outputs]) / len(outputs)
+        total_accuracy = sum([o['val_accuracy'] for o in outputs]) / len(outputs)
+        self.logger.experiment.add_scalar("Val loss", total_loss.item(), self.current_epoch)
+        self.logger.experiment.add_scalar("Val accuracy", total_accuracy.item(), self.current_epoch)
+
     def test_epoch_end(self, outputs):
-        pass
+        total_loss = sum([o['test_loss'] for o in outputs]) / len(outputs)
+        total_accuracy = sum([o['test_accuracy'] for o in outputs]) / len(outputs)
+        self.logger.experiment.add_scalar("Test loss", total_loss.item(), self.current_epoch)
+        self.logger.experiment.add_scalar("Test accuracy", total_accuracy.item(), self.current_epoch)
         
