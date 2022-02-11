@@ -27,7 +27,8 @@ class LightningClassificationNetwork(pl.LightningModule):
         self.loss = loss
         self.name = name
         self.optimizer_params = optimizer_params
-        self.accuracy = Accuracy()
+        self.val_accuracy = Accuracy()
+        self.train_accuracy = Accuracy()
 
     def forward(self,x):
         x = self.model(x)
@@ -43,8 +44,8 @@ class LightningClassificationNetwork(pl.LightningModule):
         logits = self(x)
         loss = self.loss(logits, y)
         preds = logits.argmax(dim=-1)
-        self.accuracy(preds, y)
-        self.log("train_accuracy", self.accuracy, on_step=True, on_epoch=True, prog_bar=True)
+        self.train_accuracy(preds, y)
+        self.log("train_accuracy", self.train_accuracy, on_epoch=True, prog_bar=True)
         self.log("training_loss", loss, on_step=False, on_epoch=True)
         return loss
 
@@ -55,8 +56,8 @@ class LightningClassificationNetwork(pl.LightningModule):
         logits = self(x)
         loss = self.loss(logits, y)
         preds = logits.argmax(dim=-1)
-        self.accuracy(preds, y)
-        self.log("val_accuracy", self.accuracy, on_step=True, on_epoch=True, prog_bar=True)
+        self.val_accuracy(preds, y)
+        self.log("val_accuracy", self.val_accuracy, on_epoch=True, prog_bar=True)
         self.log("val_loss", loss, on_step=False, on_epoch=True)
         return loss
 
