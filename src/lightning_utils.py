@@ -5,6 +5,7 @@ import torchmetrics as tm
 from torch import nn
 import importlib
 from torchmetrics import Accuracy
+from icecream import ic
 
 
 def optim_factory(model: nn.Module, optimizer_params: Dict[str, Any]):
