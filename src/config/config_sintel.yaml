@@ -3,23 +3,25 @@ batch_size: 8
 crop_size: [384, 512]
 inference_size: [384, 512] 
 input_adapter_params: {'type': 'ImageInputAdapter',
-                       'image_shape': [2, 384, 512, 3],
+                       'image_shape': [384, 512, 3],
                        'num_frequency_bands' : 64}
 output_adapter_params: {'type' : 'ImageRegressorAdapter',
                         'image_shape': [384, 512],
-                        'qout_dim': 16,
+                        'qout_dim': 8,
                         'out_dim': 2}
 num_self_heads: 4
-num_cross_heads: 4
+num_cross_heads: 1
 qlatent_dim: 256
-qout_dim: 16
-q_length: 128
+qout_dim: 8
+q_length: 64
 qout_length: 196608 # 384 * 512
 out_dim: 2
-num_latent_blocks: 4
+num_latent_blocks: 1
 dropout_prob: 0.1
 optim_params: {'type': 'Adam',
               'lr' : 0.001}
 name: 'Test0'
 max_epochs: 120
 num_workers: 2
+tie_weights: True
+num_self_layers: 3

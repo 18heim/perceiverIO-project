@@ -8,7 +8,7 @@ from torch.utils.tensorboard import SummaryWriter
 
 from datasets.imagenet_dataset import ImagenetDataModule
 from datasets.mnist_dataset import MNISTDataModule
-from lightning_utils import LightningClassificationNetwork
+from lightning_utils import LightningClassificationNetwork, LightningRegressionNetwork
 from PerceiverIO import PerceiverIO
 from utils import ImageClassificationAdapter, ImageInputAdapter, OutputAdapter
 from torch.utils.data import DataLoader
@@ -23,13 +23,14 @@ if __name__=="__main__":
     # data = MNISTDataModule(batch_size=conf.batch_size)
 
     # If Sintel:
-    # conf = OmegaConf.load('config/config_sintel.yaml')
-    # args = AttrDict({'inference_size': conf.inference_size, 'crop_size': conf.crop_size})
-    # data = SintelDataModule(args = args, is_cropped = True, data_dir = conf.data_dir,channels_last=True, batch_size=conf.batch_size)
+    conf = OmegaConf.load('config/config_sintel.yaml')
+    args = AttrDict({'inference_size': conf.inference_size, 'crop_size': conf.crop_size})
+    data = SintelDataModule(args = args, is_cropped = True, data_dir = conf.data_dir,channels_last=True, batch_size=conf.batch_size)
+    criterion = nn.L1Loss()
 
-    #If ImageNet:
-    conf = OmegaConf.load('config/config_imagenet.yaml')
-    data = ImagenetDataModule(Path(conf.data_dir), image_size=conf.image_shape, num_workers=conf.num_workers, batch_size=conf.batch_size, pin_memory=True, setup_validation=True)
+    # #If ImageNet:
+    # conf = OmegaConf.load('config/config_imagenet.yaml')
+    # data = ImagenetDataModule(Path(conf.data_dir), image_size=conf.image_shape, num_workers=conf.num_workers, batch_size=conf.batch_size, pin_memory=True, setup_validation=True)
 
     #If IMDB:
     # conf = OmegaConf.load('config/config_imdb.yaml')
@@ -54,10 +55,8 @@ if __name__=="__main__":
                             num_self_layers=conf.num_self_layers,
                           )
 
-    criterion = nn.CrossEntropyLoss()
-    # train_loader = data.train_dataloader()
-    # val_loader = data.val_dataloader()
-    model = LightningClassificationNetwork(loss=criterion, optimizer_params=conf.optim_params, name=conf.name, network=network)
+    #criterion = nn.CrossEntropyLoss()
+    model = LightningRegressionNetwork(loss=criterion, optimizer_params=conf.optim_params, name=conf.name, network=network)
     #logger = TensorBoardLogger(save_dir=LOG_PATH, name=model.name, version=time.asctime(), default_hp_metric=False)
     trainer = pl.Trainer(gpus=1 if torch.cuda.is_available() else None,
                         #logger=logger,

@@ -113,8 +113,7 @@ class MpiSintel(data.Dataset):
         if self.channels_last:
             images = images.permute(1, 2, 3, 0).contiguous()
         flow = torch.from_numpy(flow.astype(np.float32))
-
-        return [images], [flow]
+        return images[0], flow
 
     def __len__(self):
         return self.size * self.replicates
