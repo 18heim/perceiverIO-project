@@ -6,7 +6,7 @@ from os.path import *
 import numpy as np
 
 from glob import glob
-from sintel_utils import read_gen
+from datasets.sintel_utils import read_gen
 
 from typing import Optional
 from pathlib import Path

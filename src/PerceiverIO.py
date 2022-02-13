@@ -22,11 +22,13 @@ class PerceiverIO(nn.Module):
                  dropout_prob,
                  input_adapter_params,
                  output_adapter_params,
+                 tie_weights,
+                 num_self_layers
                  ) -> None:
         super(PerceiverIO, self).__init__()
         self.input_adapter = adapter_factory(input_adapter_params)
         in_dim = self.input_adapter.num_input_channels
-        self.encoder = PerceiverEncoder(in_dim, qlatent_dim, num_cross_heads, num_self_heads, dropout_prob, q_length, num_latent_blocks)
+        self.encoder = PerceiverEncoder(in_dim, qlatent_dim, num_cross_heads, num_self_heads, dropout_prob, q_length, num_latent_blocks, tie_weights, num_self_layers)
         self.decoder = PerceiverDecoder(qlatent_dim, qout_dim,  num_cross_heads, dropout_prob, qout_length)
         self.output_adapter = adapter_factory(output_adapter_params)
         

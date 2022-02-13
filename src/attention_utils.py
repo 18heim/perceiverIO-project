@@ -2,6 +2,18 @@ import torch
 from torch import nn
 import torch.nn.functional as F
 import math
+from einops import repeat
+from icecream import ic
+
+class mySequential(nn.Sequential):
+    def forward(self, *inputs):
+        for module in self:
+            if type(inputs) == tuple:
+                inputs = module(*inputs)
+            else:
+                inputs = module(inputs)
+        return inputs
+
 
 def mlp(num_channels: int):
     return nn.Sequential(
@@ -28,6 +40,23 @@ class MultiHeadAttention(nn.Module):
         return self.attention(input_q, input_kv, input_kv, attn_mask=mask)[0]
 
 
+class SelfAttention(nn.Module):
+    def __init__(self,
+                 qlatent_dim,
+                 num_heads,
+                 dropout_prob
+                 ) -> None:
+        super(SelfAttention, self).__init__()
+        self.norm = nn.LayerNorm(qlatent_dim)
+        self.attention = nn.MultiheadAttention(embed_dim=qlatent_dim, kdim=qlatent_dim, vdim=qlatent_dim,
+                                               num_heads=num_heads, dropout=dropout_prob,
+                                               batch_first=True)
+
+    def forward(self, x, mask = None):
+        x = self.norm(x)
+        return self.attention(x, x, x, attn_mask=mask)[0]
+
+
 class SelfAttentionBlock(nn.Module): #violet dans le schéma. Merci Mathieu pour cette indication !
     """
     Implementation of perceiverIO LatentTransformer block inspired from typical
@@ -38,14 +67,13 @@ class SelfAttentionBlock(nn.Module): #violet dans le schéma. Merci Mathieu pour
     def __init__(self,
                  qlatent_dim,
                  num_heads,
-                 dropout_prob) -> None:
+                 dropout_prob,
+                 num_layers) -> None:
         super(SelfAttentionBlock, self).__init__()
         
         #q_k dim c'est la projection, les deux entrées c'est in_dim et q_latent_dim. 
-        self.self_attention = MultiHeadAttention(in_dim=qlatent_dim,
-                                                 qlatent_dim=qlatent_dim, 
-                                                 num_heads=num_heads,
-                                                 dropout_prob=dropout_prob)
+        layers = [SelfAttention(qlatent_dim, num_heads, dropout_prob) for _ in range(num_layers)]
+        self.self_attention = mySequential(*layers)
         self.norm1 = nn.LayerNorm(qlatent_dim)
         self.norm2 = nn.LayerNorm(qlatent_dim)
         self.dropout = nn.Dropout(dropout_prob)
@@ -53,8 +81,8 @@ class SelfAttentionBlock(nn.Module): #violet dans le schéma. Merci Mathieu pour
 
     def forward(self, q, mask=None):
         # Attention part
-        q_norm = self.norm1(q)
-        attn_out = self.self_attention(q_norm, q_norm, mask=mask) #on fait un self attention normal. 
+        q = self.norm1(q)
+        attn_out = self.self_attention(q , mask)
         q = q + attn_out
         # MLP part
         linear_out = self.linear_net(q)
@@ -96,13 +124,15 @@ class LatentTransformerBlock(nn.Module): #violet dans le schéma. Merci Mathieu 
                  qlatent_dim,
                  num_cross_heads,
                  num_self_heads,
+                 num_self_layers,
                  dropout_prob) -> None:
         super(LatentTransformerBlock, self).__init__()
         
         #q_k dim c'est la projection, les deux entrées c'est in_dim et q_latent_dim. 
         self.self_attention = SelfAttentionBlock(qlatent_dim,
                                                  num_self_heads,
-                                                 dropout_prob)
+                                                 dropout_prob,
+                                                 num_self_layers)
         self.cross_attention = CrossAttentionBlock(in_dim,
                                                    qlatent_dim,
                                                    num_cross_heads,
@@ -134,8 +164,11 @@ class PerceiverEncoder(nn.Module):
                  num_self_heads,
                  dropout_prob,
                  q_length,
-                 num_latent_blocks: int = 0) -> None:
+                 num_latent_blocks: int = 0,
+                 tie_weights: bool = True,
+                 num_self_layers = 1) -> None:
         super(PerceiverEncoder,self).__init__()
+        self.tie_weights = tie_weights
         self.latent_q = nn.Parameter(torch.randn(q_length,qlatent_dim))
         self._init_parameters()
         self.num_latent_blocks = num_latent_blocks
@@ -143,26 +176,41 @@ class PerceiverEncoder(nn.Module):
                                              qlatent_dim,
                                              num_cross_heads,
                                              num_self_heads,
+                                             num_self_layers,
                                              dropout_prob)
 
         if self.num_latent_blocks > 0:
-            self.latent_block = LatentTransformerBlock(in_dim,
+            if self.tie_weights:
+                self.latent_block = LatentTransformerBlock(in_dim,
                                                        qlatent_dim,
                                                        num_cross_heads,
                                                        num_self_heads,
+                                                       num_self_layers,
                                                        dropout_prob)
+            else:
+                self.latent_block = nn.ModuleList()
+                for i in range(self.num_latent_blocks):
+                    self.latent_block.append(LatentTransformerBlock(in_dim,
+                                                qlatent_dim,
+                                                num_cross_heads,
+                                                num_self_heads,
+                                                num_self_layers,
+                                                dropout_prob) )
     def _init_parameters(self):
         with torch.no_grad():
             self.latent_q.normal_(0.0, 0.02).clamp_(-2.0, 2.0)
 
     def forward(self, x, mask=None):
-        ## on fait le positional encoding que si les outputs ont une structure spatiale ou séquentielle. 
-        b_size = x.shape[0]
-        latent_q = self.latent_q.unsqueeze(dim=0).repeat(b_size,1,1)
+        b = x.shape[0]
+        latent_q = repeat(self.latent_q, "... -> b ...", b=b)
         q = self.encode(x, latent_q, mask)
         if self.num_latent_blocks > 0:
-            for _ in range(self.num_latent_blocks - 1):
-                q = self.latent_block(x, q)
+            if self.tie_weights:
+                for _ in range(self.num_latent_blocks - 1):
+                    q = self.latent_block(x, q)
+            else:
+                for layer in self.latent_block:
+                    q = layer(x,q)
         return q
 
 
@@ -179,7 +227,7 @@ class PerceiverDecoder(nn.Module):
                  qout_length
                  ) -> None:
         super(PerceiverDecoder, self).__init__()
-        self.output_q = nn.Parameter(torch.randn(qout_length, qout_dim))
+        self.output_q = nn.Parameter(torch.empty(qout_length, qout_dim))
         self._init_parameters()
         self.cross_attention = CrossAttentionBlock(in_dim=qlatent_dim,
                                                    qlatent_dim=qout_dim,
@@ -193,8 +241,8 @@ class PerceiverDecoder(nn.Module):
             self.output_q.normal_(0.0, 0.02).clamp_(-2.0, 2.0)
 
     def forward(self, q, mask=None):
-        b_size = q.shape[0]
-        q_out = self.output_q.unsqueeze(dim=0).repeat(b_size,1,1)
+        b = q.shape[0]
+        q_out = repeat(self.output_q, "... -> b ...", b=b)
         q_out = self.cross_attention(q, q_out, mask=mask)
         # MLP part
         linear_out = self.linear_net(q_out)

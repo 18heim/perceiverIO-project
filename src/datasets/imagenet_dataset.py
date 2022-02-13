@@ -34,7 +34,6 @@ class ImagenetDataModule(pl.LightningDataModule):
         self.batch_size = batch_size
         self.pin_memory = True if (torch.cuda.is_available() and pin_memory is None) else False
         self.setup_validation = setup_validation
-        #torch.random.seed(5)
 
     def setup_val(self):
         val_img_dir = self.data_dir / 'val' / 'images'
@@ -95,8 +94,8 @@ class ImagenetDataModule(pl.LightningDataModule):
             ])
         """
         preprocessing = transforms.Compose([
-                transforms.RandomResizedCrop(self.image_size),
-                transforms.RandomHorizontalFlip(),
+                #transforms.RandomResizedCrop(self.image_size),
+                #transforms.RandomHorizontalFlip(),
                 transforms.ToTensor(),
                 transforms.Normalize(
                     mean=[0.485, 0.456, 0.406],
@@ -122,8 +121,8 @@ class ImagenetDataModule(pl.LightningDataModule):
         """
 
         preprocessing = transforms.Compose([
-                transforms.RandomResizedCrop(self.image_size),
-                transforms.RandomHorizontalFlip(),
+                #transforms.RandomResizedCrop(self.image_size),
+                #transforms.RandomHorizontalFlip(),
                 transforms.ToTensor(),
                 transforms.Normalize(
                     mean=[0.485, 0.456, 0.406],

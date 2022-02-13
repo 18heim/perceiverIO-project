@@ -23,19 +23,19 @@ if __name__=="__main__":
     # data = MNISTDataModule(batch_size=conf.batch_size)
 
     # If Sintel:
-    conf = OmegaConf.load('config/config_sintel.yaml')
-    args = AttrDict({'inference_size': conf.inference_size, 'crop_size': conf.crop_size})
-    data = SintelDataModule(args = args, is_cropped = True, data_dir = conf.data_dir,channels_last=True, batch_size=conf.batch_size)
+    # conf = OmegaConf.load('config/config_sintel.yaml')
+    # args = AttrDict({'inference_size': conf.inference_size, 'crop_size': conf.crop_size})
+    # data = SintelDataModule(args = args, is_cropped = True, data_dir = conf.data_dir,channels_last=True, batch_size=conf.batch_size)
 
     #If ImageNet:
-    # conf = OmegaConf.load('config/config_imagenet.yaml')
-    # data = ImagenetDataModule(Path(conf.data_dir), image_size=conf.image_shape, num_workers=conf.num_workers, batch_size=conf.batch_size, pin_memory=True, setup_validation=True)
+    conf = OmegaConf.load('config/config_imagenet.yaml')
+    data = ImagenetDataModule(Path(conf.data_dir), image_size=conf.image_shape, num_workers=conf.num_workers, batch_size=conf.batch_size, pin_memory=True, setup_validation=True)
 
     #If IMDB:
-    conf = OmegaConf.load('config/config_imdb.yaml')
-    word2id, embeddings, train_data, test_data = get_imdb_data()
-    embedding_dim = embeddings.shape[1]
-    data = DataLoader(train_data, collate_fn=collate, batch_size=conf.batch_size, shuffle=True)
+    # conf = OmegaConf.load('config/config_imdb.yaml')
+    # word2id, embeddings, train_data, test_data = get_imdb_data()
+    # embedding_dim = embeddings.shape[1]
+    # data = DataLoader(train_data, collate_fn=collate, batch_size=conf.batch_size, shuffle=True)
     # # train_dataloader = DataLoader(train_data, collate_fn=collate, batch_size=conf.batch_size, shuffle=True)
     # # test_dataloader = DataLoader(test_data, collate_fn=collate, batch_size=conf.batch_size, shuffle=True)
 
@@ -50,6 +50,8 @@ if __name__=="__main__":
                             dropout_prob=conf.dropout_prob,
                             input_adapter_params=conf.input_adapter_params,
                             output_adapter_params=conf.output_adapter_params,
+                            tie_weights = conf.tie_weights,
+                            num_self_layers=conf.num_self_layers,
                           )
 
     criterion = nn.CrossEntropyLoss()
