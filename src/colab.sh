@@ -20,6 +20,8 @@ unzip /content/tiny-imagenet-200.zip -d /content/
 break
 elif [[ $k = b ]] ; then
 printf "\nDownloading sintel\n"
+wget http://files.is.tue.mpg.de/sintel/MPI-Sintel-complete.zip -P /content/
+unzip /content/MPI-Sintel-complete.zip -d /content/sintel/
 break
 else
 ((count=$count+1))

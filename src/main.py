@@ -13,12 +13,19 @@ from PerceiverIO import PerceiverIO
 from utils import ImageClassificationAdapter, ImageInputAdapter, OutputAdapter
 from torch.utils.data import DataLoader
 from datasets.imdb_dataset import get_imdb_data, collate
+from datasets.sintel_utils import AttrDict
+from datasets.sintel_dataset import SintelDataModule
 
 
 if __name__=="__main__":
     #If MNIST:
     # conf = OmegaConf.load('config/config_mnist.yaml')
     # data = MNISTDataModule(batch_size=conf.batch_size)
+
+    # If Sintel:
+    conf = OmegaConf.load('config/config_sintel.yaml')
+    args = AttrDict({'inference_size': conf.inference_size, 'crop_size': conf.crop_size})
+    data = SintelDataModule(args = args, is_cropped = True, data_dir = conf.data_dir,channels_last=True, batch_size=conf.batch_size)
 
     #If ImageNet:
     # conf = OmegaConf.load('config/config_imagenet.yaml')
