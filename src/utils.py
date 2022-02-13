@@ -130,6 +130,22 @@ class ImageClassificationAdapter(OutputAdapter):
         x = self.linear_end(x)
         return x
 
+
+class ImageRegressorAdapter(OutputAdapter):
+    def __init__(self, out_dim: int, image_shape: Tuple, qout_dim: int):
+        num_outputs = image_shape[0] * image_shape[1]
+        self.image_shape = image_shape
+        self.out_dim = out_dim
+        super().__init__(output_shape=(num_outputs, qout_dim))
+        self.linear = nn.Linear(qout_dim, out_dim)
+
+    def forward(self, x):
+        batch_size, _, _ = x.size()
+        x = self.linear(x)
+        x = x.view(batch_size, self.out_dim, self.image_shape[0], self.image_shape[1])
+        return x
+        
+
 class TextInputAdapter(InputAdapter):
     def __init__(self, vocab_size: int, max_seq_len: int, num_input_channels: int):
         super().__init__(num_input_channels=num_input_channels)
@@ -165,7 +181,7 @@ class ClassificationOutputAdapter(OutputAdapter):
 
     def forward(self, x):
         return self.linear(x).squeeze(dim=1)
-
+        
 
 class TextOutputAdapter(ClassificationOutputAdapter):
     def __init__(self, vocab_size: int, max_seq_len: int, num_output_channels: Optional[int] = None):
