@@ -1,12 +1,14 @@
-import pytorch_lightning as pl
-import torch
-from torch.utils.data import DataLoader
-import torchvision
-import torchvision.datasets as datasets
-import torchvision.transforms as transforms
-from typing import Callable, Optional
 import os
 from pathlib import Path
+from typing import Callable, Optional
+
+import pytorch_lightning as pl
+import torch
+import torchvision.datasets as datasets
+import torchvision.transforms as transforms
+from torch.utils.data import DataLoader
+from utils import channels_to_last
+
 
 class ImagenetDataModule(pl.LightningDataModule):
     """
@@ -32,7 +34,6 @@ class ImagenetDataModule(pl.LightningDataModule):
         self.batch_size = batch_size
         self.pin_memory = True if (torch.cuda.is_available() and pin_memory is None) else False
         self.setup_validation = setup_validation
-        #torch.random.seed(5)
 
     def setup_val(self):
         val_img_dir = self.data_dir / 'val' / 'images'
@@ -93,13 +94,14 @@ class ImagenetDataModule(pl.LightningDataModule):
             ])
         """
         preprocessing = transforms.Compose([
-                transforms.RandomResizedCrop(self.image_size),
-                transforms.RandomHorizontalFlip(),
+                #transforms.RandomResizedCrop(self.image_size),
+                #transforms.RandomHorizontalFlip(),
                 transforms.ToTensor(),
                 transforms.Normalize(
                     mean=[0.485, 0.456, 0.406],
                     std=[0.229, 0.224, 0.225]
                 ),
+                channels_to_last,
             ])
 
         return preprocessing
@@ -119,12 +121,13 @@ class ImagenetDataModule(pl.LightningDataModule):
         """
 
         preprocessing = transforms.Compose([
-                transforms.RandomResizedCrop(self.image_size),
-                transforms.RandomHorizontalFlip(),
+                #transforms.RandomResizedCrop(self.image_size),
+                #transforms.RandomHorizontalFlip(),
                 transforms.ToTensor(),
                 transforms.Normalize(
                     mean=[0.485, 0.456, 0.406],
                     std=[0.229, 0.224, 0.225]
                 ),
+                channels_to_last,
             ])
         return preprocessing

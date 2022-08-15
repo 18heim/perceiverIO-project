@@ -1,5 +1,7 @@
 ###### Requirements without Version Specifiers ######
 pytorch_lightning
 icecream
+einops
+omegaconf
 
 ###### Requirements with Version Specifiers ######
